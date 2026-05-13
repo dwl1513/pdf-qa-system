@@ -44,7 +44,7 @@ async def upload_pdf(file: UploadFile = File(...)):
     try:
         chunks = load_and_split(str(save_path))
         vectorstore = build_vectorstore(chunks)
-        current_qa_chain = build_qa_chain(vectorstore)
+        current_qa_chain = build_qa_chain(chunks, vectorstore)
         return {"status": "success", "chunks": len(chunks), "filename": file.filename}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -62,21 +62,37 @@ async def chat(payload: dict):
 
     async def generate():
         try:
-            result = current_qa_chain.invoke({"question": question})
-            answer = result["answer"]
+            source_docs = []
+            retriever_done = False
 
-            source_docs = result.get("source_documents", [])
+            async for event in current_qa_chain.astream_events(
+                {"question": question}, version="v2"
+            ):
+                kind = event["event"]
+
+                if kind == "on_retriever_end":
+                    source_docs = event["data"].get("output", []) or []
+                    retriever_done = True
+
+                elif kind == "on_chat_model_stream" and retriever_done:
+                    chunk = event["data"]["chunk"]
+                    text = getattr(chunk, "content", "") or ""
+                    if text:
+                        data = json.dumps({"delta": text}, ensure_ascii=False)
+                        yield f"data: {data}\n\n"
+
             if source_docs:
                 page = source_docs[0].metadata.get("page", 0) + 1
-                answer += f"\n\n📄 来源：第 {page} 页"
+                tail = json.dumps(
+                    {"delta": f"\n\n📄 来源：第 {page} 页"},
+                    ensure_ascii=False,
+                )
+                yield f"data: {tail}\n\n"
 
-            # 模拟流式，逐句推送
-            for char in answer:
-                data = json.dumps({"delta": char}, ensure_ascii=False)
-                yield f"data: {data}\n\n"
             yield "data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: {json.dumps({'error': str(e)})}\n\n"
+            err = json.dumps({"error": str(e)}, ensure_ascii=False)
+            yield f"data: {err}\n\n"
 
     return StreamingResponse(generate(), media_type="text/event-stream",
                              headers={"Cache-Control": "no-cache"})
@@ -90,7 +106,7 @@ def process_pdf(pdf_file) -> str:
     try:
         chunks = load_and_split(pdf_file.name)
         vectorstore = build_vectorstore(chunks)
-        current_qa_chain = build_qa_chain(vectorstore)
+        current_qa_chain = build_qa_chain(chunks, vectorstore)
         return f"✅ PDF处理完成，共切分为 {len(chunks)} 个块，可以开始提问了"
     except Exception as e:
         return f"❌ 处理失败：{str(e)}"
