@@ -112,21 +112,43 @@ def process_pdf(pdf_file) -> str:
         return f"❌ 处理失败：{str(e)}"
 
 
-def answer_question(question: str, history: list) -> str:
+async def answer_question(question: str, _history: list):
+    """Gradio ChatInterface 用的流式回调：async generator，每次 yield 累加后的答案。"""
     if current_qa_chain is None:
-        return "请先上传PDF文件"
+        yield "请先上传PDF文件"
+        return
     if not question.strip():
-        return "请输入问题"
+        yield "请输入问题"
+        return
+
     try:
-        result = current_qa_chain.invoke({"question": question})
-        answer = result["answer"]
-        source_docs = result.get("source_documents", [])
+        accumulated = ""
+        source_docs = []
+        retriever_done = False
+
+        async for event in current_qa_chain.astream_events(
+            {"question": question}, version="v2"
+        ):
+            kind = event["event"]
+
+            if kind == "on_retriever_end":
+                source_docs = event["data"].get("output", []) or []
+                retriever_done = True
+
+            elif kind == "on_chat_model_stream" and retriever_done:
+                chunk = event["data"]["chunk"]
+                text = getattr(chunk, "content", "") or ""
+                if text:
+                    accumulated += text
+                    yield accumulated
+
         if source_docs:
             page = source_docs[0].metadata.get("page", 0) + 1
-            answer += f"\n\n📄 来源：第 {page} 页"
-        return answer
+            accumulated += f"\n\n📄 来源：第 {page} 页"
+            yield accumulated
+
     except Exception as e:
-        return f"回答出错：{str(e)}"
+        yield f"回答出错：{str(e)}"
 
 
 with gr.Blocks(title="PDF智能问答") as gradio_app:
