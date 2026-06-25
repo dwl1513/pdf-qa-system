@@ -23,6 +23,8 @@ def load_and_split(pdf_path: str) -> list[Document]:
     """
     loader = PyPDFLoader(pdf_path)
     raw_documents = loader.load()
+    if not raw_documents:
+        raise ValueError(f"No text extracted from PDF: {pdf_path}")
     print(f"PDF加载完成，共 {len(raw_documents)} 页")
 
     splitter = RecursiveCharacterTextSplitter(
