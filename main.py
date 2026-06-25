@@ -1,8 +1,8 @@
-import gradio as gr
 import json
 import shutil
 from pathlib import Path
 
+import gradio as gr
 from dotenv import load_dotenv
 from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -182,4 +182,5 @@ app = gr.mount_gradio_app(app, gradio_app, path="/")
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8000)

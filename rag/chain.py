@@ -1,17 +1,17 @@
-import jieba
 import os
+import jieba
 
-from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-from langchain_community.retrievers import BM25Retriever
-from langchain_community.vectorstores import Chroma
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_classic.memory import ConversationBufferMemory
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_classic.retrievers import (
     ContextualCompressionRetriever,
     EnsembleRetriever,
 )
+from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
 from langchain_core.documents import Document
+from langchain_community.cross_encoders import HuggingFaceCrossEncoder
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.vectorstores import Chroma
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 
@@ -35,7 +35,7 @@ def build_vectorstore(chunks: list[Document]) -> Chroma:
     vectorstore = Chroma.from_documents(chunks[:BATCH_SIZE], embeddings)
 
     for i in range(BATCH_SIZE, len(chunks), BATCH_SIZE):
-        batch = chunks[i:i + BATCH_SIZE]
+        batch = chunks[i : i + BATCH_SIZE]
         vectorstore.add_documents(batch)
         print(f"已处理 {min(i + BATCH_SIZE, len(chunks))}/{len(chunks)} 块")
 
@@ -81,7 +81,9 @@ def build_hybrid_retriever(
     return compression_retriever
 
 
-def build_qa_chain(chunks: list[Document], vectorstore: Chroma) -> ConversationalRetrievalChain:
+def build_qa_chain(
+    chunks: list[Document], vectorstore: Chroma
+) -> ConversationalRetrievalChain:
     """带 hybrid + rerank 检索链路的对话式 QA。
 
     注意签名变化：现在需要传 chunks（BM25 要全量文档建索引）。
@@ -93,7 +95,12 @@ def build_qa_chain(chunks: list[Document], vectorstore: Chroma) -> Conversationa
         temperature=0,
     )
 
-    retriever = build_hybrid_retriever(chunks, vectorstore, recall_k=20, rerank_top_n=5)
+    retriever = build_hybrid_retriever(
+        chunks,
+        vectorstore,
+        recall_k=20,
+        rerank_top_n=5,
+    )
 
     memory = ConversationBufferMemory(
         memory_key="chat_history",
