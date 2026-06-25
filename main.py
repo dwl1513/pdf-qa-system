@@ -1,14 +1,15 @@
-import os
+import gradio as gr
+import json
 import shutil
 from pathlib import Path
-import gradio as gr
-from fastapi import FastAPI, UploadFile, File, HTTPException
+
+from dotenv import load_dotenv
+from fastapi import FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from dotenv import load_dotenv
-from rag.loader import load_and_split
+
 from rag.chain import build_vectorstore, build_qa_chain
-import json
+from rag.loader import load_and_split
 
 load_dotenv()
 
@@ -94,8 +95,11 @@ async def chat(payload: dict):
             err = json.dumps({"error": str(e)}, ensure_ascii=False)
             yield f"data: {err}\n\n"
 
-    return StreamingResponse(generate(), media_type="text/event-stream",
-                             headers={"Cache-Control": "no-cache"})
+    return StreamingResponse(
+        generate(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache"},
+    )
 
 
 # ── Gradio界面 ────────────────────────────────

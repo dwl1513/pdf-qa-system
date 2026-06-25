@@ -1,16 +1,18 @@
-import os
 import jieba
+import os
 
-from langchain_openai import OpenAIEmbeddings, ChatOpenAI
-from langchain_community.vectorstores import Chroma
-from langchain_community.retrievers import BM25Retriever
 from langchain_community.cross_encoders import HuggingFaceCrossEncoder
-from langchain_classic.retrievers import EnsembleRetriever, ContextualCompressionRetriever
-from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
-from langchain_core.documents import Document
-
+from langchain_community.retrievers import BM25Retriever
+from langchain_community.vectorstores import Chroma
 from langchain_classic.chains import ConversationalRetrievalChain
 from langchain_classic.memory import ConversationBufferMemory
+from langchain_classic.retrievers.document_compressors import CrossEncoderReranker
+from langchain_classic.retrievers import (
+    ContextualCompressionRetriever,
+    EnsembleRetriever,
+)
+from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 
 
 def _chinese_tokenize(text: str) -> list[str]:
