@@ -16,18 +16,24 @@ CHINESE_SEPARATORS = [
 ]
 
 
-def load_and_split(pdf_path: str) -> list[Document]:
+def load_and_split(
+    pdf_path: str,
+    chunk_size: int = 500,
+    chunk_overlap: int = 50,
+) -> list[Document]:
     """
     加载PDF并切块，返回Document列表
     这是RAG建库的第一步
     """
     loader = PyPDFLoader(pdf_path)
     raw_documents = loader.load()
+    if not raw_documents:
+        raise ValueError(f"No text extracted from PDF: {pdf_path}")
     print(f"PDF加载完成，共 {len(raw_documents)} 页")
 
     splitter = RecursiveCharacterTextSplitter(
-        chunk_size=500,
-        chunk_overlap=50,
+        chunk_size=chunk_size,
+        chunk_overlap=chunk_overlap,
         separators=CHINESE_SEPARATORS,
         keep_separator=True,
     )
