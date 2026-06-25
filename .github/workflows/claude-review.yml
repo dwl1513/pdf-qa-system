@@ -34,34 +34,47 @@ jobs:
           claude_args: |
             --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(git log:*),Bash(git show:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
           prompt: |
-            You are reviewing a pull request for the `primyos` project — a personal TG message
-            routing system that classifies and routes messages to dimension feeds.
+            Review this pull request now, in this single run. Use the available tools to
+            read the diff (`gh pr diff`, `gh pr view`, `git show`) and post your findings
+            as inline comments and/or a summary `gh pr comment` BEFORE you finish. Do not
+            reply with "I'll get back to you" or defer the work — complete the review here.
+
+            You are reviewing a PR for `pdf-qa-system` — a PDF question-answering system
+            built on RAG (retrieval-augmented generation). Stack: FastAPI + Gradio for the
+            app layer, LangChain for orchestration, ChromaDB as the vector store, and the
+            Zhipu (智谱) GLM-4-Flash LLM + embedding-3 model via an OpenAI-compatible API.
+            Retrieval is hybrid: vector + BM25 (jieba-tokenized) fused with RRF, then a
+            BGE cross-encoder reranker. Key modules: `main.py` (FastAPI routes + Gradio UI),
+            `rag/loader.py` (PDF load & split), `rag/chain.py` (vectorstore + retriever + QA chain).
 
             **Language policy**: Code comments and commit messages must be in English.
-            PR review comments may be written in Chinese (中文).
+            PR review comments must be written in Chinese (中文).
 
-            **Package boundary rules**:
-            - Within `primyos/`: relative imports only (`from .constant import …`)
-            - `osproxy/` referencing `primyos`: absolute imports (`from primyos.constant import …`)
-            - `scripts/`: absolute imports (`from primyos.io.feed import write_feed`)
-            Violations of import conventions are bugs, not style issues.
+            **Import convention**: Project code uses absolute imports rooted at the repo
+            (`from rag.chain import build_qa_chain`, `from rag.loader import load_and_split`).
+            Tests rely on `tests/conftest.py` putting the repo root on `sys.path`. Flag
+            relative imports between top-level modules — that's a bug here, not style.
 
             **TDD requirement**: Any new feature or behavior change MUST have corresponding
             tests in `tests/test_*.py`. Flag PRs that add logic without tests.
 
-            **Entry point convention**: `scripts/` files are standalone entry points, not
-            importable helpers. They should not be imported by other modules.
-
             **Focus your review on**:
-            1. Logic bugs and off-by-one errors
-            2. Unhandled exception paths (especially file I/O, network, subprocess)
-            3. Deviations from the import conventions above
-            4. Missing tests for new logic
-            5. Correctness of `MessageType` classification and `Dimension` routing logic
+            1. Logic bugs and off-by-one errors (e.g. page-number `+1` offsets, batch
+               slicing in `build_vectorstore`, chunk overlap math).
+            2. Unhandled exception paths — file I/O (PDF upload/save), network calls to the
+               Zhipu API, and the SSE streaming generators in `/chat` and `answer_question`.
+            3. Streaming correctness: the `astream_events` event handling, `[DONE]` framing,
+               and that errors are surfaced to the client rather than silently swallowed.
+            4. Retrieval correctness in `rag/chain.py`: BM25 tokenization, EnsembleRetriever
+               weights/RRF, reranker `top_n`, and the `recall_k` / `rerank_top_n` plumbing.
+            5. Resource & state issues: the module-global `current_qa_chain` (concurrency,
+               request isolation), file handles, and uploaded-file path handling.
+            6. Deviations from the import convention above.
+            7. Missing tests for new logic.
 
             **Do NOT comment on**:
-            - Pure style issues (ruff handles formatting and lint)
-            - Over-abstraction or refactoring suggestions unless the code is actively broken
-            - Hypothetical future requirements
+            - Pure style issues (ruff handles formatting and lint).
+            - Over-abstraction or refactoring suggestions unless the code is actively broken.
+            - Hypothetical future requirements (multi-PDF, persistence, Docker, etc.).
 
             Be concise. One finding per section.
