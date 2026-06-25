@@ -1,0 +1,67 @@
+name: Claude Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, ready_for_review, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+  id-token: write
+
+jobs:
+  review:
+    if: github.event.pull_request.draft == false
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: anthropics/claude-code-action@v1
+        env:
+          ANTHROPIC_BASE_URL: ${{ secrets.ANTHROPIC_BASE_URL }}
+          ANTHROPIC_AUTH_TOKEN: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          ANTHROPIC_DEFAULT_OPUS_MODEL: "claude-sonnet-4-6"
+          ANTHROPIC_DEFAULT_SONNET_MODEL: "claude-sonnet-4-6"
+          CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: "1"
+          CLAUDE_CODE_ATTRIBUTION_HEADER: "0"
+          CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING: "1"
+          MAX_THINKING_TOKENS: "64000"
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: "128000"
+        with:
+          track_progress: true
+          anthropic_api_key: ${{ secrets.ANTHROPIC_AUTH_TOKEN }}
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(git log:*),Bash(git show:*),Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
+          prompt: |
+            You are reviewing a pull request for the `primyos` project — a personal TG message
+            routing system that classifies and routes messages to dimension feeds.
+
+            **Language policy**: Code comments and commit messages must be in English.
+            PR review comments may be written in Chinese (中文).
+
+            **Package boundary rules**:
+            - Within `primyos/`: relative imports only (`from .constant import …`)
+            - `osproxy/` referencing `primyos`: absolute imports (`from primyos.constant import …`)
+            - `scripts/`: absolute imports (`from primyos.io.feed import write_feed`)
+            Violations of import conventions are bugs, not style issues.
+
+            **TDD requirement**: Any new feature or behavior change MUST have corresponding
+            tests in `tests/test_*.py`. Flag PRs that add logic without tests.
+
+            **Entry point convention**: `scripts/` files are standalone entry points, not
+            importable helpers. They should not be imported by other modules.
+
+            **Focus your review on**:
+            1. Logic bugs and off-by-one errors
+            2. Unhandled exception paths (especially file I/O, network, subprocess)
+            3. Deviations from the import conventions above
+            4. Missing tests for new logic
+            5. Correctness of `MessageType` classification and `Dimension` routing logic
+
+            **Do NOT comment on**:
+            - Pure style issues (ruff handles formatting and lint)
+            - Over-abstraction or refactoring suggestions unless the code is actively broken
+            - Hypothetical future requirements
+
+            Be concise. One finding per section.
