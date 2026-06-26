@@ -3,7 +3,7 @@ feature_id: F-v0.1.0-0001                  # 形态: F-v{a.b.c}-{4 位数字}，
 title: 支持一次批量上传多个PDF
 prd: PRD-v0.1.0
 owner: ou_pdf_owner
-status: in_progress                           # proposed | specifying | ready | in_progress | in_review | done | blocked | dropped (§3.5)
+status: in_review                           # proposed | specifying | ready | in_progress | in_review | done | blocked | dropped (§3.5)
 started_at: "2026-06-26"
 shipped_at: null
 related_adrs: []                           # ADR id 数组（形如 ADR-vX.Y.Z-NNNN）
